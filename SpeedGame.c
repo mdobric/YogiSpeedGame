@@ -16,7 +16,7 @@ struct State {
 };
 
 struct Machine {
-  int currentState;
+  unsigned int currentState;
   unsigned int timeInCurrentState;
   struct State** states;
   unsigned int stateCount;
