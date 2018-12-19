@@ -48,8 +48,26 @@ void setup() {
   readyState->melody[1] = 4;
   readyState->melody[2] = 800;
   readyState->melody[3] = 8;
-  stateMachine->states = (struct State**) malloc(sizeof(struct State*)*1);
-  stateMachine->states[0] = readyState;
+  stateMachine->states = (struct State**) malloc(sizeof(struct State*)*4);
+  stateMachine->states[READY_STATE] = readyState;
+
+  struct State* notReadyState = (struct State*) malloc(sizeof(struct State));
+  notReadyState->stateDuration = 12;
+  notReadyState->noteCount = 0;
+  notReadyState->melody = NULL;
+  stateMachine->states[NOT_READY_STATE] = notReadyState;
+
+  struct State* successState = (struct State*) malloc(sizeof(struct State));
+  successState->stateDuration = 12;
+  successState->noteCount = 0;
+  successState->melody = NULL;
+  stateMachine->states[SUCCESS_STATE] = successState;
+
+  struct State* failState = (struct State*) malloc(sizeof(struct State));
+  failState->stateDuration = 12;
+  failState->noteCount = 0;
+  failState->melody = NULL;
+  stateMachine->states[FAIL_STATE] = failState;
 }
 
 int main() {
