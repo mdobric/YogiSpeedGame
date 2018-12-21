@@ -18,9 +18,9 @@ struct State {
 struct Machine {
   unsigned int currentState;
   int timeInCurrentState;
+  int timeInPreviousState;
   struct State** states;
   unsigned int stateCount;
-  unsigned int** transitions;
 };
 
 volatile unsigned int currentNote = 0;
@@ -54,14 +54,57 @@ unsigned int getCurrentNote(struct State* state, int currentTime) {
   return state->melody[2 * currentNote];
 }
 
+void handleEvent(struct Machine* machine, unsigned int event) {
+  switch(machine->currentState) {
+  case READY_STATE:
+    if (event == TIMER_EXPIRED) {
+      machine->currentState = NOT_READY_STATE;
+      machine->timeInCurrentState = 0;
+    } else if (event == SWITCH_TRIGGERED) {
+      machine->currentState = SUCCESS_STATE;
+      machine->timeInCurrentState = 0;
+    }
+    break;
+  case NOT_READY_STATE:
+    if (event == TIMER_EXPIRED) {
+      machine->currentState = READY_STATE;
+      machine->timeInCurrentState = 0;
+    } else if (event == SWITCH_TRIGGERED) {
+      machine->currentState = FAIL_STATE;
+      machine->timeInPreviousState = machine->timeInCurrentState;
+      machine->timeInCurrentState = 0;
+    }
+    break;
+  case SUCCESS_STATE:
+    if (event == TIMER_EXPIRED) {
+      machine->currentState = READY_STATE;
+      machine->timeInCurrentState = 0;
+    } else if (event == SWITCH_TRIGGERED) {
+      // do nothing
+    }
+    break;
+  case FAIL_STATE:
+    if (event == TIMER_EXPIRED) {
+      machine->currentState = NOT_READY_STATE;
+      machine->timeInCurrentState = machine->timeInPreviousState;
+      machine->timeInPreviousState = 0;
+    } else if (event == SWITCH_TRIGGERED) {
+      // do nothing
+    }
+  }
+}
+
 void tick(struct Machine* machine) {
   machine->timeInCurrentState++;
-  if (machine->timeInCurrentState < machine->states[machine->currentState]->duration) {
-    // stay in current state; time already incremented
+  if (switchTriggered == 1) {
+    handleEvent(machine, SWITCH_TRIGGERED);
+    switchTriggered = 0;
+  } else if (machine->timeInCurrentState >= machine->states[machine->currentState]->duration) {
+    handleEvent(machine, TIMER_EXPIRED);
   } else {
-    machine->timeInCurrentState = 0;
-    machine->currentState = machine->transitions[machine->currentState][TIMER_EXPIRED];
+    // nothing left to do; we already increased the time and don't need to transition state
   }
+  // play tone for timepoint in current state
   unsigned int currentNote = getCurrentNote(machine->states[machine->currentState], machine->timeInCurrentState);
   playNote(currentNote);
 }
