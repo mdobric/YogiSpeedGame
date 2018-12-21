@@ -17,12 +17,18 @@ struct State {
 
 struct Machine {
   unsigned int currentState;
-  unsigned int timeInCurrentState;
+  int timeInCurrentState;
   struct State** states;
   unsigned int stateCount;
+  unsigned int** transitions;
 };
 
-unsigned int currentNote = 0;
+volatile unsigned int currentNote = 0;
+volatile char switchTriggered = 0;
+
+void switchInterrupt() {
+  switchTriggered = 1;
+}
 
 void playNote(unsigned int note) {
   if (currentNote == note) return;
@@ -49,12 +55,15 @@ unsigned int getCurrentNote(struct State* state, int currentTime) {
 }
 
 void tick(struct Machine* machine) {
-  struct State* currentState = machine->states[machine->currentState];  
-  if (machine->timeInCurrentState < currentState->duration) {
-    // stay in current state; get tone
-    unsigned int currentNote = getCurrentNote(currentState, machine->timeInCurrentState);
-    playNote(currentNote);
+  machine->timeInCurrentState++;
+  if (machine->timeInCurrentState < machine->states[machine->currentState]->duration) {
+    // stay in current state; time already incremented
+  } else {
+    machine->timeInCurrentState = 0;
+    machine->currentState = machine->transitions[machine->currentState][TIMER_EXPIRED];
   }
+  unsigned int currentNote = getCurrentNote(machine->states[machine->currentState], machine->timeInCurrentState);
+  playNote(currentNote);
 }
 
 struct Machine* stateMachine;
@@ -92,7 +101,7 @@ void setup() {
   stateMachine->states[FAIL_STATE] = failState;
 
   stateMachine->currentState = READY_STATE;
-  stateMachine->timeInCurrentState = 0;
+  stateMachine->timeInCurrentState = -1;
 }
 
 int main() {
